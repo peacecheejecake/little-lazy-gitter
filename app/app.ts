@@ -8,123 +8,124 @@ export type AppContextType = InstanceType<typeof AppContext>;
 export type ModuleFunction = (context: AppContextType) => void | Promise<void>;
 
 const { productName, protocols } = require(app.isPackaged
-  ? './app.json'
-  : '../electron-builder.json');
+	? './app.json'
+	: '../electron-builder.json');
 
 class AppContext {
-  // deep link protocol
-  readonly PROTOCOL = protocols.name;
+	// deep link protocol
+	readonly PROTOCOL = protocols.name;
 
-  // is mac os
-  readonly IS_MAC = process.platform === 'darwin';
+	// is mac os
+	readonly IS_MAC = process.platform === 'darwin';
 
-  // dev mode - url
-  readonly DEV_URL = `http://localhost:3000/#`;
+	// dev mode - url
+	readonly DEV_URL = `http://localhost:3000/#`;
 
-  // production mode - load file
-  readonly PROD_LOAD_FILE_PATH = join(__dirname, '../dist/index.html');
-  readonly PROD_LOAD_FILE_HASH = '#';
+	// production mode - load file
+	readonly PROD_LOAD_FILE_PATH = join(__dirname, '../dist/index.html');
+	readonly PROD_LOAD_FILE_HASH = '#';
 
-  // resources directory
-  readonly RESOURCES_PATH = app.isPackaged
-    ? join(process.resourcesPath, 'resources')
-    : join(app.getAppPath(), 'resources');
+	// resources directory
+	readonly RESOURCES_PATH = app.isPackaged
+		? join(process.resourcesPath, 'resources')
+		: join(app.getAppPath(), 'resources');
 
-  // native icon
-  readonly ICON = nativeImage.createFromPath(
-    `${this.RESOURCES_PATH}/icons/${this.IS_MAC ? 'logo@512.png' : 'logo@256.ico'}`,
-  );
+	// native icon
+	readonly ICON = nativeImage.createFromPath(
+		`${this.RESOURCES_PATH}/icons/${this.IS_MAC ? 'logo@512.png' : 'logo@256.ico'}`,
+	);
 
-  // electron window
-  window: BrowserWindow | null = null;
+	// electron window
+	window: BrowserWindow | null = null;
 
-  async bootstrap() {
-    await this.initliazeElectron();
-    await this.autoload();
-    await this.createWindow();
-  }
+	async bootstrap() {
+		await this.initliazeElectron();
+		await this.autoload();
+		await this.createWindow();
+	}
 
-  async initliazeElectron() {
-    const gotTheLock = app.requestSingleInstanceLock();
+	async initliazeElectron() {
+		const gotTheLock = app.requestSingleInstanceLock();
 
-    if (!gotTheLock) {
-      app.quit();
-      process.exit(0);
-    }
+		if (!gotTheLock) {
+			app.quit();
+			process.exit(0);
+		}
 
-    app.setAsDefaultProtocolClient(this.PROTOCOL);
+		app.setAsDefaultProtocolClient(this.PROTOCOL);
 
-    app.on('activate', () => {
-      this.createWindow();
-    });
+		app.on('activate', () => {
+			this.createWindow();
+		});
 
-    app.on('window-all-closed', () => {
-      this.window = null;
-    });
+		app.on('window-all-closed', () => {
+			this.window = null;
+		});
 
-    await app.whenReady();
-    await this.createTray();
-  }
+		await app.whenReady();
+		await this.createTray();
+	}
 
-  // create electron window
-  async createWindow() {
-    if (this.window) {
-      if (this.window.isMinimized()) this.window.restore();
-      this.window.focus();
-      return;
-    }
+	// create electron window
+	async createWindow() {
+		if (this.window) {
+			if (this.window.isMinimized()) this.window.restore();
+			this.window.focus();
+			return;
+		}
 
-    this.window = new BrowserWindow({
-      width: 1800,
-      height: 1000,
-      backgroundColor: '#36393F',
-      darkTheme: true,
-      show: false,
-      autoHideMenuBar: true,
-      frame: false,
-      icon: this.ICON,
-      webPreferences: {
-        preload: join(__dirname, 'preload/index.js'),
-      },
-    });
+		this.window = new BrowserWindow({
+			width: 900,
+			height: 500,
+			backgroundColor: '#36393F',
+			darkTheme: true,
+			show: false,
+			autoHideMenuBar: false,
+			frame: false,
+			icon: this.ICON,
+			webPreferences: {
+				preload: join(__dirname, 'preload/index.js'),
+			},
+			titleBarStyle: 'hidden',
+		});
 
-    if (app.isPackaged) {
-      this.window.loadFile(this.PROD_LOAD_FILE_PATH, {
-        hash: this.PROD_LOAD_FILE_HASH,
-      });
-    } else {
-      await this.window.loadURL(this.DEV_URL);
-      this.window.webContents.openDevTools();
-    }
+		if (app.isPackaged) {
+			this.window.loadFile(this.PROD_LOAD_FILE_PATH, {
+				hash: this.PROD_LOAD_FILE_HASH,
+			});
+		} else {
+			await this.window.loadURL(this.DEV_URL);
+			this.window.webContents.openDevTools();
+		}
 
-    this.window.on('ready-to-show', () => {
-      this.window?.show();
-    });
-  }
+		this.window.on('ready-to-show', () => {
+			this.window?.show();
+		});
+	}
 
-  async createTray() {
-    let tray = new Tray(this.ICON.resize({ width: 20, height: 20 }));
+	async createTray() {
+		let tray = new Tray(this.ICON.resize({ width: 20, height: 20 }));
 
-    const contextMenu = Menu.buildFromTemplate([
-      { label: 'view app screen', type: 'normal', click: () => this.createWindow() },
-      { type: 'separator' },
-      { label: 'quit', role: 'quit', type: 'normal' },
-    ]);
+		const contextMenu = Menu.buildFromTemplate([
+			{ label: 'view app screen', type: 'normal', click: () => this.createWindow() },
+			{ type: 'separator' },
+			{ label: 'quit', role: 'quit', type: 'normal' },
+		]);
 
-    tray.on('double-click', () => this.createWindow());
-    tray.setToolTip(productName);
-    tray.setContextMenu(contextMenu);
-  }
+		tray.on('double-click', () => this.createWindow());
+		tray.setToolTip(productName);
+		tray.setContextMenu(contextMenu);
+	}
 
-  async register(module: ModuleFunction) {
-    await module(this);
-  }
+	async register(module: ModuleFunction) {
+		await module(this);
+	}
 
-  async autoload() {
-    const modules = await globImport('./modules/**/index.js', { cwd: __dirname });
+	async autoload() {
+		const modules = await globImport('./modules/**/index.js', { cwd: __dirname });
 
-    await Promise.all(modules.map(({ default: module }) => this.register(module)));
-  }
+		await Promise.all(modules.map(({ default: module }) => this.register(module)));
+	}
 }
 
 export default AppContext;
